@@ -69,7 +69,7 @@ class MyApp extends StatelessWidget {
       initialRoute: '/intro',
       routes: {
         '/signup': (context) => SignUpScreen(),
-        '/welcome': (context) => WelcomeScreen(),
+        '/welcome': (context) => WelcomeScreen(token),
         '/profile': (context) => ProfilePage(),
         '/verificationScreen': (context) => VerificationScreen(),
         '/rideList': (context) => RideListPage(),
@@ -82,7 +82,7 @@ class MyApp extends StatelessWidget {
         '/profileSetup': (context) => ProfileSetupScreen(userData: null),
         '/login': (context) => LoginScreen(),
         '/verification_screen': (context) => VerificationScreen(),
-        '/OfferRidePage': (context) => OfferRidePage(),
+        '/OfferRidePage': (context) => OfferRidePage( ),
         '/FindRide': (context) => FindRidePage(),
         '/intro': (context) => IntroPage(),
       },

@@ -21,7 +21,7 @@ class _RideDetailState extends State<RideDetail> {
   // Function to fetch ride details from an API
   Future<void> fetchRideDetails() async {
     final url = Uri.parse(
-        'https://example.com/api/ride/1'); // Replace with your API endpoint
+        'https://wassalni-maak.onrender.com/'); // Replace with your API endpoint
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {

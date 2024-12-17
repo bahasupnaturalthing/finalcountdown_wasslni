@@ -130,7 +130,7 @@ class _RideListPageState extends State<RideListPage> {
 
   Future<void> fetchRides() async {
     const url =
-        'https://bcde-196-203-181-122.ngrok-free.app/carpool/covoiturages/';
+        'https://wassalni-maak.onrender.com/carpool/';
     try {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {

@@ -17,6 +17,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _isLoading = false; // To show loading indicator
   String? _errorMessage; // To display error message
+  String? token; // Declare token variable here
 
   // Function to handle login
   Future<void> _handleLogin() async {
@@ -41,13 +42,18 @@ class _LoginScreenState extends State<LoginScreen> {
       // Check response status
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final String accessToken = data['access'];
+        token = data['access']; // Assign the token
 
         // Print the token (optional)
-        print('Access Token: $accessToken');
+        print('Access Token: $token');
 
-        // Navigate to WelcomeScreen if login is successful
-        Navigator.pushNamed(context, '/welcome');
+        // Navigate to WelcomeScreen and pass the token as a parameter
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => WelcomeScreen(token: token!),
+          ),
+        );
       } else {
         // Login failed, show error message
         setState(() {
@@ -127,6 +133,23 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// WelcomeScreen definition
+class WelcomeScreen extends StatelessWidget {
+  final String token; // Token passed from the LoginScreen
+
+  const WelcomeScreen({super.key, required this.token});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Welcome")),
+      body: Center(
+        child: Text("Token: $token"), // Display the token here
       ),
     );
   }
