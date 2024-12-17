@@ -114,6 +114,10 @@ class RideCard extends StatelessWidget {
 }
 
 class RideListPage extends StatefulWidget {
+  final String token; // Token parameter
+
+  RideListPage({Key? key, required this.token}) : super(key: key);
+
   @override
   _RideListPageState createState() => _RideListPageState();
 }
@@ -129,10 +133,13 @@ class _RideListPageState extends State<RideListPage> {
   }
 
   Future<void> fetchRides() async {
-    const url =
-        'https://wassalni-maak.onrender.com/carpool/';
+    const url = 'https://wassalni-maak.onrender.com/carpool/';
     try {
-      final response = await http.get(Uri.parse(url));
+      // Add the token to the headers for authentication
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'Authorization': 'Bearer ${widget.token}'},
+      );
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         setState(() {
@@ -153,9 +160,11 @@ class _RideListPageState extends State<RideListPage> {
         });
       } else {
         print('Error fetching rides: ${response.statusCode}');
+        setState(() => isLoading = false);
       }
     } catch (e) {
       print('Error: $e');
+      setState(() => isLoading = false);
     }
   }
 
