@@ -1,193 +1,222 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'payment_page.dart';
+import 'package:intl/intl.dart';
+import 'chat.dart';
+import 'ride_booked.dart';
 
 class RideDetail extends StatefulWidget {
+  final int rideId;
+  final String token; // Added token parameter
+
+  RideDetail({required this.rideId, required this.token});
+
   @override
-  _RideDetailState createState() => _RideDetailState();
+  _RideDetailPageState createState() => _RideDetailPageState();
 }
 
-class _RideDetailState extends State<RideDetail> {
-  Map<String, dynamic> rideData = {}; // To store the fetched ride data
-  bool isLoading = true; // State to manage loading
+class _RideDetailPageState extends State<RideDetail> {
+  late Map<String, dynamic> ride = {};
+  late Map<String, dynamic> driver = {};
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    fetchRideDetails(); // Call the fetch function on page load
+    fetchRideDetails();
   }
 
-  // Function to fetch ride details from an API
+  // Fetch ride details
   Future<void> fetchRideDetails() async {
-    final url = Uri.parse(
-        'https://wassalni-maak.onrender.com/'); // Replace with your API endpoint
+    print('Fetching ride details for rideId: ${widget.rideId}');
+    final url = "https://wassalni-maak.onrender.com/carpool/${widget.rideId}";
     try {
-      final response = await http.get(url);
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'Authorization': 'Bearer ${widget.token}'}, // Add token here
+      );
+
       if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
         setState(() {
-          rideData = json.decode(response.body);
-          isLoading = false; // Stop loading
+          ride = data;
+          isLoading = false;
         });
+
+        // Fetch driver details
+        fetchDriverDetails(ride['owner_id']);
       } else {
-        print('Error: ${response.statusCode}');
+        print("Failed to load ride details");
+        setState(() => isLoading = false);
       }
     } catch (e) {
-      print('Error fetching data: $e');
-      setState(() {
-        isLoading = false;
-      });
+      print("Error fetching ride details: $e");
+      setState(() => isLoading = false);
+    }
+  }
+
+  // Fetch driver details
+  Future<void> fetchDriverDetails(driverId) async {
+    print('Fetching driver details for driverId: $driverId');
+    final url = "https://wassalni-maak.onrender.com/user/${driverId}";
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'Authorization': 'Bearer ${widget.token}'}, // Add token here
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          driver = data;
+        });
+      } else {
+        print("Failed to load driver details");
+      }
+    } catch (e) {
+      print("Error fetching driver details: $e");
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+        ),
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
+          icon: Icon(Icons.arrow_back_ios, color: Colors.redAccent),
+          onPressed: () {
+            Navigator.pop(context);
+          },
         ),
+        title: Text(
+          'Ride Details',
+          style:
+              TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
       ),
-      body: isLoading
-          ? Center(child: CircularProgressIndicator()) // Loading indicator
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Date and Price
-                  Text(
-                    rideData['time'] != null
-                        ? rideData['time'].split('T')[0] // Extract date
-                        : 'Unknown Date',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Total price for 1 passenger',
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
-                      ),
-                      Text(
-                        '${rideData['price'] ?? 0} DT',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.red,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 16),
-
-                  // Time, Start, Destination
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Column(
-                        children: [
-                          Text(
-                            rideData['time'] != null
-                                ? rideData['time'].split('T')[1].substring(0, 5)
-                                : '00:00',
-                            style: TextStyle(fontSize: 16),
-                          ),
-                          SizedBox(height: 8),
-                          Column(
-                            children: [
-                              CircleAvatar(
-                                radius: 5,
-                                backgroundColor: Colors.red,
-                                child: CircleAvatar(
-                                  radius: 3,
-                                  backgroundColor: Colors.white,
-                                ),
-                              ),
-                              Container(
-                                width: 2,
-                                height: 30,
-                                color: Colors.red,
-                              ),
-                              CircleAvatar(
-                                radius: 5,
-                                backgroundColor: Colors.red,
-                                child: CircleAvatar(
-                                  radius: 3,
-                                  backgroundColor: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 8),
-                          Text('04:00 PM', style: TextStyle(fontSize: 16)),
-                        ],
-                      ),
-                      SizedBox(width: 16),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            rideData['departure'] ?? 'Unknown Departure',
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
-                          SizedBox(height: 48),
-                          Text(
-                            rideData['destination'] ?? 'Unknown Destination',
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 16),
-
-                  // Seats Available
-                  Row(
-                    children: [
-                      Icon(Icons.event_seat, size: 24, color: Colors.grey),
-                      SizedBox(width: 8),
-                      Text(
-                        'Seats available: ${rideData['seats_available'] ?? 0}',
-                        style: TextStyle(fontSize: 16),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 32),
-
-                  // Request Ride Button
-                  Center(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => PaymentPage()));
-                      },
-                      style: ElevatedButton.styleFrom(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 50, vertical: 16),
-                        backgroundColor: Colors.red,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                      ),
-                      child: Text(
-                        'Request for ride',
-                        style: TextStyle(fontSize: 16, color: Colors.white),
-                      ),
-                    ),
-                  ),
-                ],
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            // Ride Time
+            Text(
+              formatDate(ride['time'] ?? ""),
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
               ),
             ),
+            SizedBox(height: 20),
+
+            // Price
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Total price for 1 passenger',
+                  style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+                ),
+                Text(
+                  '${ride['price'] ?? 0} DT',
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.redAccent),
+                ),
+              ],
+            ),
+            SizedBox(height: 20),
+
+            // Driver Section
+            Card(
+              margin: EdgeInsets.all(16),
+              child: ListTile(
+                leading: CircleAvatar(
+                  radius: 30,
+                  backgroundImage: NetworkImage(
+                      'https://example.com/profile_picture.jpg'), // Example placeholder
+                ),
+                title: Text(
+                  '${driver['firstName']} ${driver['lastName']}',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text(
+                  '${driver['rating'] ?? 0}/5 ratings',
+                  style: TextStyle(color: Colors.grey),
+                ),
+                trailing: Icon(Icons.arrow_forward_ios, size: 16),
+              ),
+            ),
+            Spacer(),
+            // Chat Button
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ChatServicePage(),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                padding: EdgeInsets.symmetric(horizontal: 50, vertical: 16),
+              ),
+              child: Text(
+                'Contact Driver',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+            SizedBox(height: 10),
+            // Book Ride Button
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => RideConfirmationPage(
+                      token: widget.token, // Pass token to confirmation page
+                    ),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                padding: EdgeInsets.symmetric(horizontal: 50, vertical: 16),
+              ),
+              child: Text(
+                'Book Ride',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
+
+  String formatDate(String dateString) {
+    if (dateString.isEmpty) return "Loading...";
+    DateTime dateTime = DateTime.parse(dateString);
+    return DateFormat('EEE d MMM').format(dateTime);
+  }
+}
+
+String getTime(String dateString) {
+  DateTime dateTime = DateTime.parse(dateString);
+  return DateFormat('hh:mm a').format(dateTime);
 }

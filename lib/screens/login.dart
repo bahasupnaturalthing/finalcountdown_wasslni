@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert'; // For JSON decoding
-import 'welcome.dart'; // Import the WelcomeScreen
-import 'set_password.dart';
+import 'welcome.dart'; // Import the WelcomeScreen file
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,16 +11,24 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  bool _isLoading = false; // To show loading indicator
-  String? _errorMessage; // To display error message
-  String? token; // Declare token variable here
+  bool _isLoading = false; // Loading indicator
+  String? _errorMessage; // Error message
 
-  // Function to handle login
+  // Function to handle login using form-data
   Future<void> _handleLogin() async {
     final String apiUrl = 'https://wassalni-maak.onrender.com/user/login';
+    final String email = _emailController.text.trim();
+    final String password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      setState(() {
+        _errorMessage = 'Please enter both email and password.';
+      });
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -29,41 +36,52 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      // Make the POST request
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': _usernameController.text, // Changed to 'username'
-          'password': _passwordController.text,
-        }),
-      );
+      // Create form-data request
+      var request = http.MultipartRequest('POST', Uri.parse(apiUrl));
+      request.fields['username'] = email; // Send email as username
+      request.fields['password'] = password;
 
-      // Check response status
+      print('Request Fields: ${request.fields}'); // Debug form-data payload
+
+      // Send the request
+      final response = await request.send();
+
+      // Convert response to a readable format
+      final responseBody = await http.Response.fromStream(response);
+
+      print('Response Status: ${response.statusCode}'); // Debug status
+      print('Response Body: ${responseBody.body}'); // Debug response body
+
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        token = data['access']; // Assign the token
+        final data = jsonDecode(responseBody.body);
+        print('Response Data: $data'); // Debug full response
 
-        // Print the token (optional)
-        print('Access Token: $token');
+        // Define the token locally here
+        final String? token = data['access_token'];
 
-        // Navigate to WelcomeScreen and pass the token as a parameter
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => WelcomeScreen(token: token!),
-          ),
-        );
+        if (token != null) {
+          // Navigate to the WelcomeScreen
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => WelcomeScreen(token: token), // Pass token
+            ),
+          );
+        } else {
+          setState(() {
+            _errorMessage = 'Login succeeded but access token is missing.';
+          });
+        }
       } else {
-        // Login failed, show error message
         setState(() {
-          _errorMessage = 'Invalid username or password';
+          _errorMessage = 'Invalid email or password.';
         });
       }
     } catch (e) {
       setState(() {
         _errorMessage = 'An error occurred. Please try again.';
       });
+      print('Error: $e'); // Debug error
     } finally {
       setState(() {
         _isLoading = false;
@@ -79,15 +97,17 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Username Input Field
+            // Email Input Field
             TextField(
-              controller: _usernameController,
+              controller: _emailController,
               decoration: InputDecoration(
-                labelText: 'Enter your username',
+                labelText: 'Email',
+                hintText: 'Enter your email address',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
                 ),
               ),
+              keyboardType: TextInputType.emailAddress,
             ),
             const SizedBox(height: 16),
 
@@ -102,20 +122,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 8),
-
-            // Forgot Password Button
-            TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => SetPasswordScreen()),
-                );
-              },
-              child: const Text('Forgot Password?'),
-            ),
-
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
 
             // Error Message Display
             if (_errorMessage != null)
@@ -123,6 +130,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 _errorMessage!,
                 style: const TextStyle(color: Colors.red),
               ),
+
+            const SizedBox(height: 16),
 
             // Log In Button
             ElevatedButton(
@@ -133,23 +142,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// WelcomeScreen definition
-class WelcomeScreen extends StatelessWidget {
-  final String token; // Token passed from the LoginScreen
-
-  const WelcomeScreen({super.key, required this.token});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Welcome")),
-      body: Center(
-        child: Text("Token: $token"), // Display the token here
       ),
     );
   }

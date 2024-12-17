@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert'; // For JSON encoding and decoding
+import 'welcome.dart';
 
 class OfferRidePage extends StatefulWidget {
-  const OfferRidePage({super.key});
+  final String token; // Token parameter added
+
+  const OfferRidePage({super.key, required this.token});
 
   @override
   State<OfferRidePage> createState() => _OfferRidePageState();
@@ -74,24 +77,21 @@ class _OfferRidePageState extends State<OfferRidePage> {
 
     // Prepare request data
     Map<String, dynamic> requestData = {
-      "departure_id": departureController.text,
+      "departure": departureController.text,
       "time": dateTime.toIso8601String(),
-      "destination_id": destinationController.text,
-      "addresses": {},
-      "available_seats": selectedPassengers,
-      "options": [0], // Example options, update as needed
+      "destination": destinationController.text,
+      "seats_available": selectedPassengers,
       "price": double.tryParse(priceController.text) ?? 0,
-      "driver": 0 // Update with the driver ID if applicable
     };
 
-    final url = Uri.parse(
-        'https://wassalni-maak.onrender.com//carpool/'); // Update the URL
+    final url = Uri.parse('https://wassalni-maak.onrender.com/carpool/');
 
     try {
       final response = await http.post(
         url,
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${widget.token}', // Add token here
         },
         body: jsonEncode(requestData),
       );
@@ -99,6 +99,14 @@ class _OfferRidePageState extends State<OfferRidePage> {
       if (response.statusCode == 200 || response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Ride offered successfully!')),
+        );
+
+        // Navigate to the WelcomeScreen and pass the token
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => WelcomeScreen(token: widget.token),
+          ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -251,9 +259,7 @@ class _OfferRidePageState extends State<OfferRidePage> {
             // Offer a Ride Button
             Center(
               child: ElevatedButton(
-                onPressed: () async {
-                  await _offerRide(); // Execute your API request when the button is pressed
-                },
+                onPressed: _offerRide,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.redAccent,
                   padding:
@@ -270,34 +276,6 @@ class _OfferRidePageState extends State<OfferRidePage> {
             ),
           ],
         ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.redAccent,
-        unselectedItemColor: Colors.grey,
-        currentIndex: 2, // Highlight the "Publish" tab
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.directions_car),
-            label: 'Your rides',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.search),
-            label: 'Search',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add_circle, color: Colors.redAccent),
-            label: 'Publish',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.inbox),
-            label: 'Inbox',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
       ),
     );
   }

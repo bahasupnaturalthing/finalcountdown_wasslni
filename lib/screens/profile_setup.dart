@@ -1,9 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_input/image_input.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   final Map<String, String>? userData;
@@ -16,46 +16,56 @@ class ProfileSetupScreen extends StatefulWidget {
 
 class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final _formKey = GlobalKey<FormState>();
-  XFile? profileAvatarImage;
-  bool allowEdit = true;
-
-  String? _firstName;
-  String? _lastName;
-  String? _username;
-  String? _phoneNumber;
-  String? _cin;
-  String? _birthdate;
   final TextEditingController _birthdateController = TextEditingController();
 
+  XFile? profileAvatarImage;
+  String? _firstName;
+  String? _lastName;
+  String? _phoneNumber;
+  String? _birthDay;
+  String? _profilePicture;
+  String? _gender; // Added gender field
+
+  // Image Picker to select profile picture
+  Future<void> _pickProfileImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      final bytes = await image.readAsBytes();
+      setState(() {
+        profileAvatarImage = image;
+        _profilePicture = base64Encode(bytes);
+      });
+    }
+  }
+
+  // Combine user data and send POST request
   Future<void> _saveProfileData() async {
     final data = {
-      ...?widget.userData, // Safely spread userData
-      'first_name': _firstName ?? '',
-      'last_name': _lastName ?? '',
-      'username': _username ?? '',
-      'phone_number': _phoneNumber ?? '',
-      'CIN': _cin ?? '',
-      'birth_date': _birthdate ?? '',
+      ...?widget.userData,
+      'firstName': _firstName ?? '',
+      'lastName': _lastName ?? '',
+      'phoneNumber': _phoneNumber ?? '',
+      'birthDay': _birthDay ?? '',
+      'gender': _gender ?? '',
+      'profilePicture': _profilePicture ?? '',
     };
 
-    final url = Uri.parse('http://127.0.0.1:8000/core/register/');
-    final body = jsonEncode(data);
-
+    final url = Uri.parse('https://wassalni-maak.onrender.com/user/signup');
     try {
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: body,
+        body: jsonEncode(data),
       );
 
       if (response.statusCode == 200) {
-        Navigator.pushNamed(context, '/intro');
+        Navigator.pushNamed(context, '/success');
       } else {
-        final error = jsonDecode(response.body)['error'];
-        _showError(error ?? 'Profile setup failed');
+        _showError('Failed to save profile. Try again.');
       }
     } catch (e) {
-      _showError('An error occurred. Please try again.');
+      _showError('An error occurred. Please check your connection.');
     }
   }
 
@@ -81,55 +91,35 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       appBar: AppBar(title: Text('Profile Setup')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
             child: Column(
               children: [
-                ProfileAvatar(
-                  image: profileAvatarImage,
-                  radius: 50,
-                  allowEdit: allowEdit,
-                  addImageIcon: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.redAccent,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: Icon(Icons.add_a_photo),
-                    ),
+                GestureDetector(
+                  onTap: _pickProfileImage,
+                  child: CircleAvatar(
+                    radius: 50,
+                    backgroundColor: Colors.grey.shade300,
+                    backgroundImage: profileAvatarImage != null
+                        ? FileImage(File(profileAvatarImage!.path))
+                        : null,
+                    child: profileAvatarImage == null
+                        ? Icon(Icons.add_a_photo, size: 30, color: Colors.white)
+                        : null,
                   ),
-                  removeImageIcon: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.redAccent,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: Icon(Icons.close),
-                    ),
-                  ),
-                  onImageChanged: (image) {
-                    setState(() {
-                      profileAvatarImage = image;
-                    });
-                  },
                 ),
                 SizedBox(height: 16),
                 TextFormField(
                   decoration: InputDecoration(labelText: 'First Name'),
                   onChanged: (value) => _firstName = value,
+                  validator: (value) => value!.isEmpty ? 'Required' : null,
                 ),
                 SizedBox(height: 16),
                 TextFormField(
                   decoration: InputDecoration(labelText: 'Last Name'),
                   onChanged: (value) => _lastName = value,
-                ),
-                SizedBox(height: 16),
-                TextFormField(
-                  decoration: InputDecoration(labelText: 'Username'),
-                  onChanged: (value) => _username = value,
+                  validator: (value) => value!.isEmpty ? 'Required' : null,
                 ),
                 SizedBox(height: 16),
                 TextFormField(
@@ -148,122 +138,53 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     );
                     if (pickedDate != null) {
                       setState(() {
-                        _birthdate =
-                            DateFormat('yyyy-MM-dd').format(pickedDate);
-                        _birthdateController.text = _birthdate!;
+                        _birthDay = DateFormat('yyyy-MM-dd').format(pickedDate);
+                        _birthdateController.text = _birthDay!;
                       });
                     }
                   },
                 ),
                 SizedBox(height: 16),
-                Row(
-                  children: [
-                    Flexible(
-                      flex: 2,
-                      child: DropdownButtonFormField(
-                        decoration: InputDecoration(
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        hint: Text('+216'),
-                        items: [
-                          DropdownMenuItem(
-                            child: Text('+216'),
-                            value: '+216',
-                          ),
-                        ],
-                        onChanged: (value) {},
-                      ),
+                DropdownButtonFormField<String>(
+                  decoration: InputDecoration(
+                    labelText: 'Gender',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    SizedBox(width: 10),
-                    Flexible(
-                      flex: 5,
-                      child: TextFormField(
-                        decoration: InputDecoration(
-                          labelText: 'Phone Number',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        onChanged: (value) => _phoneNumber = value,
-                      ),
-                    ),
+                  ),
+                  items: [
+                    DropdownMenuItem(value: 'Male', child: Text('Male')),
+                    DropdownMenuItem(value: 'Female', child: Text('Female')),
                   ],
+                  onChanged: (value) {
+                    setState(() {
+                      _gender = value;
+                    });
+                  },
+                  validator: (value) =>
+                      value == null ? 'Please select your gender' : null,
                 ),
                 SizedBox(height: 16),
                 TextFormField(
-                  decoration: InputDecoration(labelText: 'CIN'),
-                  keyboardType: TextInputType.number,
-                  onChanged: (value) => _cin = value,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your CIN';
-                    }
-                    if (value.length != 8 ||
-                        !RegExp(r'^[0-9]+$').hasMatch(value)) {
-                      return 'CIN must be exactly 8 digits';
-                    }
-                    return null;
-                  },
+                  decoration: InputDecoration(labelText: 'Phone Number'),
+                  keyboardType: TextInputType.phone,
+                  onChanged: (value) => _phoneNumber = value,
+                  validator: (value) => value!.isEmpty ? 'Required' : null,
                 ),
                 SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: Text('Cancel'),
-                      ),
-                    ),
-                    SizedBox(width: 16),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          if (_formKey.currentState!.validate()) {
-                            _saveProfileData();
-                          }
-                        },
-                        child: Text('Save'),
-                      ),
-                    ),
-                  ],
+                ElevatedButton(
+                  onPressed: () {
+                    if (_formKey.currentState!.validate()) {
+                      _saveProfileData();
+                    }
+                  },
+                  child: Text('Save Profile'),
                 ),
               ],
             ),
           ),
         ),
       ),
-    );
-  }
-}
-
-class ProfileInputField extends StatelessWidget {
-  final String label;
-  final TextInputType? keyboardType;
-  final String? Function(String?)? validator;
-  final ValueChanged<String>? onChanged;
-  final TextEditingController? controller;
-  final bool obscureText;
-
-  ProfileInputField({
-    required this.label,
-    this.keyboardType,
-    this.validator,
-    this.onChanged,
-    this.controller,
-    this.obscureText = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      decoration: InputDecoration(labelText: label),
-      keyboardType: keyboardType,
-      obscureText: obscureText,
-      validator: validator,
-      onChanged: onChanged,
     );
   }
 }

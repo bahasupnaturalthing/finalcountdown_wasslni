@@ -1,154 +1,257 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
-void main() => runApp(MyApp());
+class FeedbackScreen extends StatefulWidget {
+  final String token; // Accept token from previous page
 
-class MyApp extends StatelessWidget {
+  FeedbackScreen({required this.token});
+
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      home: FeedbackPage(),
-    );
-  }
+  _FeedbackScreenState createState() => _FeedbackScreenState();
 }
 
-class FeedbackPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.redAccent,
-        title: Text('Feedback of your ride'),
-        centerTitle: true,
-        elevation: 0,
-      ),
-      body: Column(
-        children: [
-         // Profile Section
-Container(
-  width: double.infinity, // Ajout pour étendre la largeur
-  color: Colors.redAccent,
-  padding: EdgeInsets.symmetric(vertical: 20), // Optionnel : pour plus d'espace
-  child: Column(
-    children: [
-      CircleAvatar(
-        radius: 40,
-        backgroundImage: AssetImage('assets/ayoub.png'),
-        backgroundColor: Colors.redAccent,
-      ),
-      SizedBox(height: 10),
-      Text(
-        'Ayoub Ben Omrane',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    ],
-  ),
-),
+class _FeedbackScreenState extends State<FeedbackScreen> {
+  int _rating = 0;
+  final TextEditingController _feedbackController = TextEditingController();
+  String _selectedOption = 'Definitely';
+  String driverName = '';
+  ImageProvider? profilePicture;
 
-          SizedBox(height: 20),
-          // Rating Section
-          Text(
-            'Rate your ride',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              5,
-              (index) => Icon(
-                Icons.star_border,
-                size: 40,
-                color: Colors.grey,
-              ),
-            ),
-          ),
-          SizedBox(height: 20),
-          // Suggestions Section
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: TextField(
-              maxLines: 3,
-              decoration: InputDecoration(
-                hintText: 'Submit your suggestions or complaints',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-          ),
-          SizedBox(height: 20),
-          // Would you ride again Section
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+  @override
+  void initState() {
+    super.initState();
+    fetchDriverDetails();
+  }
+
+  Future<void> fetchDriverDetails() async {
+    try {
+      final response = await http.get(
+          Uri.parse("https://wassalni-maak.onrender.com/feedback"),
+          headers: {
+            'Authorization':
+                'Bearer ${widget.token}', // Use token for authentication
+          });
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        print(data);
+        final base64Image = data['profilePicture'] ?? "";
+        setState(() {
+          driverName = "\${data['firstname']} \${data['firstname']}";
+          profilePicture = base64Image.isNotEmpty
+              ? MemoryImage(base64Decode(base64Image))
+              : null;
+        });
+      } else {
+        throw Exception('Failed to load driver details');
+      }
+    } catch (e) {
+      print('Error fetching driver details: \$e');
+    }
+  }
+
+  Future<void> submitFeedback() async {
+    try {
+      print({
+        'rating': _rating,
+        'comment': '\${_selectedOption} \${_feedbackController.text}',
+        'receiver_id': 0,
+        'id': 0,
+        'giver_id': 0,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+
+      final response = await http.post(
+        Uri.parse('https://wassalni-maak.onrender.com/feedback'),
+        headers: {
+          'Authorization': 'Bearer ${widget.token}', // Use the dynamic token
+          'Content-Type': 'application/json'
+        },
+        body: json.encode({
+          'rating': _rating,
+          'comment': '\${_selectedOption} \${_feedbackController.text}',
+          'receiver_id': 0,
+          'id': 0,
+          'giver_id': 0,
+          'created_at': DateTime.now().toIso8601String(),
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        _showConfirmationDialog();
+      } else {
+        throw Exception('Failed to submit feedback');
+      }
+    } catch (e) {
+      print('Error submitting feedback: \$e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error submitting feedback')),
+      );
+    }
+  }
+
+  void _showConfirmationDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
+          content: Container(
+            height: 200,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  'Would you love to ride with the same person again?',
-                  style: TextStyle(
-                    fontSize: 16,
-                  ),
+                CircleAvatar(
+                  backgroundColor: Colors.green,
+                  child: Icon(Icons.check, color: Colors.white, size: 40),
                 ),
-                SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    ElevatedButton(
-                      onPressed: () {},
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey[200],
-                        foregroundColor: Colors.black,
-                      ),
-                      child: Text('Definitely'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () {},
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey[200],
-                        foregroundColor: Colors.black,
-                      ),
-                      child: Text('May be'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () {},
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey[200],
-                        foregroundColor: Colors.black,
-                      ),
-                      child: Text('Never'),
-                    ),
-                  ],
+                SizedBox(height: 16),
+                Text(
+                  'Feedback submitted!',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 8),
+                Text('Rating submitted: $_rating stars'),
+                SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(); // Close the dialog
+                    // Optionally, navigate to home or another screen
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    padding: EdgeInsets.symmetric(horizontal: 40, vertical: 10),
+                  ),
+                  child:
+                      Text('Back home', style: TextStyle(color: Colors.white)),
                 ),
               ],
             ),
           ),
-          SizedBox(height: 20),
-          // Submit Button
-          ElevatedButton(
-            onPressed: () {},
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-              padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Feedback'),
+        backgroundColor: Colors.red,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Profile Picture and Name
+            Center(
+              child: Column(
+                children: [
+                  CircleAvatar(
+                    radius: 40,
+                    backgroundImage: profilePicture,
+                    child: profilePicture == null
+                        ? Icon(Icons.person, size: 40, color: Colors.white)
+                        : null,
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    driverName.isNotEmpty ? driverName : 'Loading...',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                ],
               ),
             ),
-            child: Text(
-              'Submit',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
+            SizedBox(height: 24),
+
+            // Rating Section
+            Text('Rate your ride:', style: TextStyle(fontSize: 16)),
+            Row(
+              children: List.generate(5, (index) {
+                return IconButton(
+                  icon: Icon(
+                    index < _rating ? Icons.star : Icons.star_border,
+                    color: Colors.yellow,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _rating = index + 1;
+                    });
+                  },
+                );
+              }),
+            ),
+            SizedBox(height: 24),
+
+            // Feedback Text Field
+            TextField(
+              controller: _feedbackController,
+              decoration: InputDecoration(
+                labelText: 'Submit your suggestions or complaints',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+            SizedBox(height: 24),
+
+            // Future Ride Question
+            Text('Would you love to ride with the same person again?',
+                style: TextStyle(fontSize: 16)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildOptionButton('Definitely'),
+                _buildOptionButton('May be'),
+                _buildOptionButton('Never'),
+              ],
+            ),
+            SizedBox(height: 24),
+
+            // Submit Button
+            Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  submitFeedback();
+                },
+                style: ElevatedButton.styleFrom(
+                  padding: EdgeInsets.symmetric(horizontal: 50, vertical: 16),
+                  backgroundColor: Colors.red,
+                ),
+                child: Text(
+                  'Submit',
+                  style: TextStyle(fontSize: 16, color: Colors.white),
+                ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOptionButton(String option) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedOption = option;
+        });
+      },
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: _selectedOption == option ? Colors.red : Colors.grey[300],
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          option,
+          style: TextStyle(
+            color: _selectedOption == option ? Colors.white : Colors.black,
           ),
-        ],
+        ),
       ),
     );
   }

@@ -3,7 +3,9 @@ import 'offer_ride.dart';
 import 'find_ride.dart';
 
 class WelcomeScreen extends StatelessWidget {
-  const WelcomeScreen({super.key});
+  final String token; // Add the token as a parameter
+
+  const WelcomeScreen({super.key, required this.token}); // Constructor updated
 
   @override
   Widget build(BuildContext context) {
@@ -28,11 +30,11 @@ class WelcomeScreen extends StatelessWidget {
               // Car Illustration using assets
               Image.asset(
                 'assets/Capture d\'écran 2024-11-24 161133.png', // Correct path as per pubspec.yaml
-                width: 250, // Adjust the size of the image
+                width: 250,
                 height: 250,
               ),
-              const SizedBox(
-                  height: 30), // Space between the image and the title
+              const SizedBox(height: 30),
+
               const Text(
                 'Welcome to Ride Share!',
                 style: TextStyle(
@@ -41,8 +43,18 @@ class WelcomeScreen extends StatelessWidget {
                   color: Colors.black,
                 ),
               ),
-              const SizedBox(
-                  height: 30), // Space between the title and the buttons
+              const SizedBox(height: 20),
+
+              // Display the token
+              Text(
+                'Your token: $token',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 30),
 
               // Find a Ride Button
               ElevatedButton(
@@ -50,12 +62,13 @@ class WelcomeScreen extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => const FindRidePage()),
+                      builder: (context) =>
+                          FindRidePage(token: token), // Pass token here
+                    ),
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      Colors.redAccent, // Corrected backgroundColor usage
+                  backgroundColor: Colors.redAccent,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 100, vertical: 15),
                   shape: RoundedRectangleBorder(
@@ -67,21 +80,21 @@ class WelcomeScreen extends StatelessWidget {
                   style: TextStyle(color: Colors.white, fontSize: 16),
                 ),
               ),
-              const SizedBox(height: 20), // Space between the buttons
+              const SizedBox(height: 20),
 
-              // Offer a Ride Button (Now in red as per previous style)
+              // Offer a Ride Button
               ElevatedButton(
                 onPressed: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => const OfferRidePage()),
+                      builder: (context) =>
+                          OfferRidePage(token: token), // Pass token here
+                    ),
                   );
-                  // Add your navigation logic for offering a ride here
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      Colors.redAccent, // Same red color as 'Find a Ride'
+                  backgroundColor: Colors.redAccent,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 100, vertical: 15),
                   shape: RoundedRectangleBorder(

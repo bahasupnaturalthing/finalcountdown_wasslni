@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
-import 'chat.dart';
+import 'package:frontend/screens/welcome.dart';
+import 'feedback.dart';
 
 class RideConfirmationPage extends StatelessWidget {
+  final String token; // Added token parameter
+
+  const RideConfirmationPage(
+      {super.key, required this.token}); // Constructor with token
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -13,10 +19,10 @@ class RideConfirmationPage extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               // Map pin icon
-              Icon(
-                Icons.location_on,
-                size: 300.0,
-                color: Colors.redAccent,
+              Image.asset(
+                'assets/pin.png', // Correct path as per pubspec.yaml
+                width: 250, // Adjust the size of the image
+                height: 250,
               ),
               const SizedBox(height: 20),
               // Confirmation text
@@ -30,13 +36,40 @@ class RideConfirmationPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 40),
-              // Thanks button
+              // Rate your Ride Button
               ElevatedButton(
                 onPressed: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => ChatServicePage(),
+                      builder: (context) => FeedbackScreen(token: token),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30.0),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 15.0,
+                    horizontal: 50.0,
+                  ),
+                ),
+                child: const Text(
+                  'Rate your Ride!',
+                  style: TextStyle(fontSize: 16.0, color: Colors.white),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Thanks Button
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => WelcomeScreen(token: token),
                     ),
                   );
                 },
@@ -65,7 +98,7 @@ class RideConfirmationPage extends StatelessWidget {
             1, // You can set this dynamically based on the selected index
         selectedItemColor: Colors.red,
         unselectedItemColor: Colors.grey,
-        items: [
+        items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.directions_car),
             label: 'Your rides',
