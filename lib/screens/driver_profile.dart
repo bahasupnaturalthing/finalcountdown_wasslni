@@ -4,20 +4,22 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 class DriverProfilePage extends StatefulWidget {
-  final int driverId;
+  final int driverId; // Driver ID passed dynamically
 
   DriverProfilePage({required this.driverId});
+
   @override
   _DriverProfilePageState createState() => _DriverProfilePageState();
 }
 
 class _DriverProfilePageState extends State<DriverProfilePage> {
   String driverName = "Loading...";
-  String phoneNumber = "";
+  String phoneNumber = "N/A";
   Uint8List? profilePicture;
   double rating = 0.0;
   int evaluations = 0;
   List<dynamic> feedbacks = [];
+  bool isLoading = true;
 
   @override
   void initState() {
@@ -27,45 +29,54 @@ class _DriverProfilePageState extends State<DriverProfilePage> {
     fetchFeedbacks();
   }
 
+  /// Fetch driver details
   Future<void> fetchDriver() async {
-    final url =
-        "https://wassalni-maak.onrender.com/user/10"; // Use driverId dynamically
+    final url = "https://wassalni-maak.onrender.com/user/${widget.driverId}";
     try {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        print(data);
+        print("Driver Data: $data");
         setState(() {
           driverName =
-              data['firstName'] + " " + data['lastName'] ?? "Unknown Driver";
+              "${data['firstName'] ?? ''} ${data['lastName'] ?? ''}".trim();
           phoneNumber = data['phoneNumber'] ?? "N/A";
           final base64Image = data['profilePicture'] ?? "";
           profilePicture = base64Image.isNotEmpty
               ? base64Decode(base64Image)
               : null; // Decode image safely
           rating = double.tryParse(data['rating'].toString()) ?? 0.0;
+          evaluations = data['evaluations'] ?? 0;
         });
       } else {
-        print("Failed to load driver data");
+        print(
+            "Failed to load driver data. Status code: ${response.statusCode}");
       }
     } catch (e) {
       print("Error fetching driver data: $e");
     }
   }
 
+  /// Fetch driver feedbacks
   Future<void> fetchFeedbacks() async {
-    // Example feedback fetch (replace with your API logic)
     final feedbackUrl =
-        "https://wassalni-maak.onrender.com/user/${widget.driverId}/feedbacks";
+        "https://wassalni-maak.onrender.com/feedback/${widget.driverId}";
     try {
       final response = await http.get(Uri.parse(feedbackUrl));
       if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print("Feedback Data: $data");
         setState(() {
-          feedbacks = jsonDecode(response.body);
+          feedbacks = data['feedbacks'] ?? [];
+          isLoading = false; // Stop the loading spinner
         });
+      } else {
+        print("Failed to load feedbacks. Status code: ${response.statusCode}");
+        setState(() => isLoading = false);
       }
     } catch (e) {
       print("Error fetching feedbacks: $e");
+      setState(() => isLoading = false);
     }
   }
 
@@ -81,6 +92,10 @@ class _DriverProfilePageState extends State<DriverProfilePage> {
           onPressed: () {
             Navigator.pop(context);
           },
+        ),
+        title: Text(
+          "Driver Profile",
+          style: TextStyle(color: Colors.white),
         ),
       ),
       body: Column(
@@ -110,7 +125,7 @@ class _DriverProfilePageState extends State<DriverProfilePage> {
                         ),
                 ),
                 SizedBox(height: 10),
-                // Name
+                // Driver Name
                 Text(
                   driverName,
                   style: TextStyle(
@@ -141,60 +156,49 @@ class _DriverProfilePageState extends State<DriverProfilePage> {
           ),
           // Feedbacks Section
           Expanded(
-            child: feedbacks.isEmpty
-                ? Center(
-                    child: CircularProgressIndicator()) // Loading feedbacks
-                : ListView.builder(
-                    itemCount: feedbacks.length,
-                    itemBuilder: (context, index) {
-                      final feedback = feedbacks[index];
-                      return ListTile(
-                        leading: Icon(Icons.feedback, color: Colors.red),
-                        title: Text(
-                          feedback['username'] ?? "Anonymous",
-                          style: TextStyle(fontWeight: FontWeight.bold),
+            child: isLoading
+                ? Center(child: CircularProgressIndicator()) // Show loader
+                : feedbacks.isEmpty
+                    ? Center(
+                        child: Text(
+                          "No feedbacks available",
+                          style: TextStyle(color: Colors.grey, fontSize: 16.0),
                         ),
-                        subtitle: Text(feedback['comment'] ?? "No comment"),
-                        trailing: Text(
-                          "${feedback['rating']} ⭐",
-                          style: TextStyle(color: Colors.green),
-                        ),
-                      );
-                    },
-                  ),
+                      )
+                    : ListView.builder(
+                        itemCount: feedbacks.length,
+                        itemBuilder: (context, index) {
+                          final feedback = feedbacks[index];
+                          return Card(
+                            elevation: 2,
+                            margin: EdgeInsets.symmetric(
+                                vertical: 8, horizontal: 16),
+                            child: ListTile(
+                              leading: Icon(Icons.comment, color: Colors.red),
+                              title: Text(
+                                "Feedback ID: ${feedback['id']}",
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text("Rating: ${feedback['rating']} ⭐"),
+                                  SizedBox(height: 4),
+                                  Text(feedback['comment'] ?? "No comment"),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    "Date: ${feedback['created_at']}",
+                                    style: TextStyle(
+                                        fontSize: 12, color: Colors.grey),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
           ),
         ],
-      ),
-      // Bottom Navigation Bar
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 1,
-        selectedItemColor: Colors.red,
-        unselectedItemColor: Colors.grey,
-        items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.directions_car),
-            label: 'Your rides',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.search),
-            label: 'Search',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add),
-            label: 'Publish',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.inbox),
-            label: 'Inbox',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
-        onTap: (index) {
-          print("Tab $index clicked");
-        },
       ),
     );
   }

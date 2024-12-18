@@ -3,10 +3,14 @@ import 'package:frontend/screens/welcome.dart';
 import 'feedback.dart';
 
 class RideConfirmationPage extends StatelessWidget {
-  final String token; // Added token parameter
+  final String token; // Token parameter
+  final int driverId; // Driver ID parameter
 
-  const RideConfirmationPage(
-      {super.key, required this.token}); // Constructor with token
+  const RideConfirmationPage({
+    super.key,
+    required this.token,
+    required this.driverId, // Constructor with token and driverId
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +25,7 @@ class RideConfirmationPage extends StatelessWidget {
               // Map pin icon
               Image.asset(
                 'assets/pin.png', // Correct path as per pubspec.yaml
-                width: 250, // Adjust the size of the image
+                width: 250,
                 height: 250,
               ),
               const SizedBox(height: 20),
@@ -36,13 +40,17 @@ class RideConfirmationPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 40),
+
               // Rate your Ride Button
               ElevatedButton(
                 onPressed: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => FeedbackScreen(token: token),
+                      builder: (context) => FeedbackScreen(
+                        token: token,
+                        driverId: driverId, // Pass driverId to FeedbackScreen
+                      ),
                     ),
                   );
                 },
@@ -94,8 +102,7 @@ class RideConfirmationPage extends StatelessWidget {
       ),
       // Bottom Navigation Bar
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex:
-            1, // You can set this dynamically based on the selected index
+        currentIndex: 1,
         selectedItemColor: Colors.red,
         unselectedItemColor: Colors.grey,
         items: const [

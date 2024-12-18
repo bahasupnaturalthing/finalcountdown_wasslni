@@ -1,13 +1,13 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:intl/intl.dart';
-import 'chat.dart';
-import 'ride_booked.dart';
+import 'ride_booked.dart'; // Import RideConfirmationPage
+import 'driver_profile.dart'; // Import DriverProfilePage
 
 class RideDetail extends StatefulWidget {
   final int rideId;
-  final String token; // Added token parameter
+  final String token;
 
   RideDetail({required this.rideId, required this.token});
 
@@ -19,32 +19,33 @@ class _RideDetailPageState extends State<RideDetail> {
   late Map<String, dynamic> ride = {};
   late Map<String, dynamic> driver = {};
   bool isLoading = true;
+  Uint8List? driverProfilePicture;
+
+  int? driverId; // Store driver ID to pass later
 
   @override
   void initState() {
     super.initState();
+    print("Ride ID: ${widget.rideId}, Token: ${widget.token}");
     fetchRideDetails();
   }
 
-  // Fetch ride details
+  /// Fetch ride details
   Future<void> fetchRideDetails() async {
-    print('Fetching ride details for rideId: ${widget.rideId}');
     final url = "https://wassalni-maak.onrender.com/carpool/${widget.rideId}";
     try {
       final response = await http.get(
         Uri.parse(url),
-        headers: {'Authorization': 'Bearer ${widget.token}'}, // Add token here
+        headers: {'Authorization': 'Bearer ${widget.token}'},
       );
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         setState(() {
           ride = data;
+          driverId = data['owner_id']; // Get the driverId from the response
           isLoading = false;
         });
-
-        // Fetch driver details
-        fetchDriverDetails(ride['owner_id']);
+        fetchDriverDetails(driverId!);
       } else {
         print("Failed to load ride details");
         setState(() => isLoading = false);
@@ -55,20 +56,22 @@ class _RideDetailPageState extends State<RideDetail> {
     }
   }
 
-  // Fetch driver details
-  Future<void> fetchDriverDetails(driverId) async {
-    print('Fetching driver details for driverId: $driverId');
-    final url = "https://wassalni-maak.onrender.com/user/${driverId}";
+  /// Fetch driver details
+  Future<void> fetchDriverDetails(int driverId) async {
+    final url = "https://wassalni-maak.onrender.com/user/$driverId";
     try {
       final response = await http.get(
         Uri.parse(url),
-        headers: {'Authorization': 'Bearer ${widget.token}'}, // Add token here
+        headers: {'Authorization': 'Bearer ${widget.token}'},
       );
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         setState(() {
           driver = data;
+          final base64Image = data['profilePicture'] ?? "";
+          driverProfilePicture = base64Image.isNotEmpty
+              ? base64Decode(base64Image)
+              : null; // Decode image safely
         });
       } else {
         print("Failed to load driver details");
@@ -100,18 +103,12 @@ class _RideDetailPageState extends State<RideDetail> {
             Navigator.pop(context);
           },
         ),
-        title: Text(
-          'Ride Details',
-          style:
-              TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // Ride Time
+            // Ride Details Section
             Text(
               formatDate(ride['time'] ?? ""),
               style: TextStyle(
@@ -121,8 +118,6 @@ class _RideDetailPageState extends State<RideDetail> {
               ),
             ),
             SizedBox(height: 20),
-
-            // Price
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -141,66 +136,108 @@ class _RideDetailPageState extends State<RideDetail> {
             ),
             SizedBox(height: 20),
 
-            // Driver Section
-            Card(
-              margin: EdgeInsets.all(16),
-              child: ListTile(
-                leading: CircleAvatar(
-                  radius: 30,
-                  backgroundImage: NetworkImage(
-                      'https://example.com/profile_picture.jpg'), // Example placeholder
+            // Timeline Section
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Column(
+                  children: [
+                    CircleAvatar(
+                      radius: 8,
+                      backgroundColor: Colors.redAccent,
+                    ),
+                    Container(
+                      width: 2,
+                      height: 50,
+                      color: Colors.red,
+                    ),
+                    CircleAvatar(
+                      radius: 8,
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  ],
                 ),
-                title: Text(
-                  '${driver['firstName']} ${driver['lastName']}',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                SizedBox(width: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      ride['departure'] ?? "",
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 50),
+                    Text(
+                      ride['destination'] ?? "",
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ],
                 ),
-                subtitle: Text(
-                  '${driver['rating'] ?? 0}/5 ratings',
-                  style: TextStyle(color: Colors.grey),
-                ),
-                trailing: Icon(Icons.arrow_forward_ios, size: 16),
-              ),
+              ],
             ),
-            Spacer(),
-            // Chat Button
-            ElevatedButton(
-              onPressed: () {
+            SizedBox(height: 20),
+
+            // Driver Section
+            GestureDetector(
+              onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => ChatServicePage(),
+                    builder: (context) => DriverProfilePage(
+                      driverId: driverId!,
+                    ),
                   ),
                 );
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
-                padding: EdgeInsets.symmetric(horizontal: 50, vertical: 16),
-              ),
-              child: Text(
-                'Contact Driver',
-                style: TextStyle(color: Colors.white),
+              child: Card(
+                margin: EdgeInsets.all(16),
+                color: Colors.white,
+                child: ListTile(
+                  leading: CircleAvatar(
+                    radius: 25,
+                    backgroundColor: Colors.grey.shade300,
+                    backgroundImage: driverProfilePicture != null
+                        ? MemoryImage(driverProfilePicture!)
+                        : null,
+                    child: driverProfilePicture == null
+                        ? Icon(Icons.person, color: Colors.white)
+                        : null,
+                  ),
+                  title: Text(
+                    "${driver['firstName']} ${driver['lastName']}",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text("Phone: ${driver['phoneNumber'] ?? "N/A"}"),
+                  trailing: Icon(Icons.arrow_forward_ios, color: Colors.grey),
+                ),
               ),
             ),
-            SizedBox(height: 10),
-            // Book Ride Button
+            Spacer(),
+
+            // Request for Ride Button
             ElevatedButton(
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => RideConfirmationPage(
-                      token: widget.token, // Pass token to confirmation page
+                      token: widget.token,
+                      driverId: driverId!, // Pass the driverId
                     ),
                   ),
                 );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
                 padding: EdgeInsets.symmetric(horizontal: 50, vertical: 16),
+                backgroundColor: Colors.redAccent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(25),
+                ),
               ),
               child: Text(
-                'Book Ride',
-                style: TextStyle(color: Colors.white),
+                'Request for Ride',
+                style: TextStyle(fontSize: 16, color: Colors.white),
               ),
             ),
           ],
@@ -212,11 +249,6 @@ class _RideDetailPageState extends State<RideDetail> {
   String formatDate(String dateString) {
     if (dateString.isEmpty) return "Loading...";
     DateTime dateTime = DateTime.parse(dateString);
-    return DateFormat('EEE d MMM').format(dateTime);
+    return "${dateTime.day}/${dateTime.month}/${dateTime.year} - ${dateTime.hour}:${dateTime.minute}";
   }
-}
-
-String getTime(String dateString) {
-  DateTime dateTime = DateTime.parse(dateString);
-  return DateFormat('hh:mm a').format(dateTime);
 }

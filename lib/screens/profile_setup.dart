@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:frontend/main.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'welcome.dart'; // Import the WelcomeScreen
 
 class ProfileSetupScreen extends StatefulWidget {
   final Map<String, String>? userData;
@@ -24,7 +26,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   String? _phoneNumber;
   String? _birthDay;
   String? _profilePicture;
-  String? _gender; // Added gender field
+  String? _gender;
 
   // Image Picker to select profile picture
   Future<void> _pickProfileImage() async {
@@ -41,7 +43,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
   // Combine user data and send POST request
   Future<void> _saveProfileData() async {
-    final data = {
+    // Merge signup data and profile details
+    final Map<String, dynamic> data = {
       ...?widget.userData,
       'firstName': _firstName ?? '',
       'lastName': _lastName ?? '',
@@ -52,6 +55,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     };
 
     final url = Uri.parse('https://wassalni-maak.onrender.com/user/signup');
+
     try {
       final response = await http.post(
         url,
@@ -59,12 +63,31 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         body: jsonEncode(data),
       );
 
-      if (response.statusCode == 200) {
-        Navigator.pushNamed(context, '/success');
+      print("Response Status: ${response.statusCode}");
+      print("Response Body: ${response.body}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Parse response body to extract token
+        final responseBody = jsonDecode(response.body);
+        final String token = responseBody['token'] ?? '';
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile saved successfully!')),
+        );
+
+        // Navigate to WelcomeScreen and pass the token
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MyApp(),
+          ),
+        );
       } else {
-        _showError('Failed to save profile. Try again.');
+        _showError(
+            'Failed to save profile. Status: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
+      print("Exception: $e");
       _showError('An error occurred. Please check your connection.');
     }
   }
@@ -73,12 +96,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Error'),
+        title: const Text('Error'),
         content: Text(message),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('OK'),
+            child: const Text('OK'),
           ),
         ],
       ),
@@ -88,7 +111,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Profile Setup')),
+      appBar: AppBar(
+        title: const Text('Profile Setup'),
+        backgroundColor: Colors.redAccent,
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -105,26 +131,27 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         ? FileImage(File(profileAvatarImage!.path))
                         : null,
                     child: profileAvatarImage == null
-                        ? Icon(Icons.add_a_photo, size: 30, color: Colors.white)
+                        ? const Icon(Icons.add_a_photo,
+                            size: 30, color: Colors.white)
                         : null,
                   ),
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 TextFormField(
-                  decoration: InputDecoration(labelText: 'First Name'),
+                  decoration: const InputDecoration(labelText: 'First Name'),
                   onChanged: (value) => _firstName = value,
                   validator: (value) => value!.isEmpty ? 'Required' : null,
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 TextFormField(
-                  decoration: InputDecoration(labelText: 'Last Name'),
+                  decoration: const InputDecoration(labelText: 'Last Name'),
                   onChanged: (value) => _lastName = value,
                   validator: (value) => value!.isEmpty ? 'Required' : null,
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 TextFormField(
                   controller: _birthdateController,
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     labelText: 'Birthdate',
                     suffixIcon: Icon(Icons.calendar_today),
                   ),
@@ -144,7 +171,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     }
                   },
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   decoration: InputDecoration(
                     labelText: 'Gender',
@@ -152,33 +179,37 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  items: [
+                  items: const [
                     DropdownMenuItem(value: 'Male', child: Text('Male')),
                     DropdownMenuItem(value: 'Female', child: Text('Female')),
                   ],
-                  onChanged: (value) {
-                    setState(() {
-                      _gender = value;
-                    });
-                  },
+                  onChanged: (value) => _gender = value,
                   validator: (value) =>
                       value == null ? 'Please select your gender' : null,
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 TextFormField(
-                  decoration: InputDecoration(labelText: 'Phone Number'),
+                  decoration: const InputDecoration(labelText: 'Phone Number'),
                   keyboardType: TextInputType.phone,
                   onChanged: (value) => _phoneNumber = value,
                   validator: (value) => value!.isEmpty ? 'Required' : null,
                 ),
-                SizedBox(height: 24),
+                const SizedBox(height: 24),
                 ElevatedButton(
                   onPressed: () {
                     if (_formKey.currentState!.validate()) {
                       _saveProfileData();
                     }
                   },
-                  child: Text('Save Profile'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 50, vertical: 16),
+                  ),
+                  child: const Text(
+                    'Save Profile',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ],
             ),
