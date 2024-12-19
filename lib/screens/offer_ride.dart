@@ -84,7 +84,7 @@ class _OfferRidePageState extends State<OfferRidePage> {
       "price": double.tryParse(priceController.text) ?? 0,
     };
 
-    final url = Uri.parse('https://wassalni-maak.onrender.com/carpool/');
+    final url = Uri.parse('https://wassalni-maak.onrender.com/carpool');
 
     try {
       final response = await http.post(
